@@ -9,25 +9,28 @@ class FileCorrupted(Exception):
 class FileNotFound(Exception):
     pass
 
+def get_logger(mode):
+    logger_name = "LabLogger_File" if mode == "file" else "LabLogger_Console"
+    logger = logging.getLogger(logger_name)
+    if not logger.hasHandlers():
+        logger.setLevel(logging.ERROR)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        
+        if mode == "file":
+            handler = logging.FileHandler("log.txt", mode='a', encoding='utf-8')
+        else:
+            handler = logging.StreamHandler()
+            
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        
+    return logger
+
 def logged(exc_cls, mode):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            logger = logging.getLogger("LabLogger")
-            logger.setLevel(logging.ERROR)
-
-            if logger.hasHandlers():
-                logger.handlers.clear()
-
-            if mode == "file":
-                handler = logging.FileHandler("log.txt", mode='a', encoding='utf-8')
-            else:
-                handler = logging.StreamHandler()
-
-            format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-            handler.setFormatter(format)
-            logger.addHandler(handler)
-
+            logger = get_logger(mode) 
             try:
                 return func(*args, **kwargs)
             except exc_cls as e:
@@ -68,10 +71,15 @@ class Csv:
 
 try:
     manager = Csv("data.csv")
-    manager.write([["Name", "Group"]])
+    if not os.path.exists("data.csv"):
+        manager.write([["Name", "Group"]])
+    else:
+        print("файл вже існує, додаю нові дані")
+
     manager.append([["Oleg", "IR-11"]])
     manager.append([["Hanna", "IR-12"]])
     manager.append([["Bodia", "IR-12"]])
+    
     print(manager.read())
 except (FileNotFound, FileCorrupted) as e:
     print(f"виняток: {e}")
